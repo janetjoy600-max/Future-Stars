@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Future Stars</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html,body,#root{height:100%}
+    body{background:#f9fafb;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .shadow-soft{box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06)}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Safe localStorage JSON helper
+    const getLS=(k,f)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch(e){ return f; } };
+
+    // Tiny helper to read DataURL (for teacher photo)
+    const readAsDataURL = (file) => new Promise((resolve,reject)=>{ const fr=new FileReader(); fr.onload=()=>resolve(fr.result); fr.onerror=reject; fr.readAsDataURL(file); });
+
+    // i18n (EN/FR)
+    const T={
+      EN:{
+        strapline:'For kids 3–18 and adults',
+        hero_title:'Welcome to the home of languages',
+        hero_sub:'Learn, explore, and be great. English • French • Spanish • Chinese',
+        btn_register:'Register (Parents & Students)',
+        btn_find_tutors:'Find Tutors',
+        pricing_title:'Pricing (XOF)',
+        plan_trial:'Trial 30 min',
+        plan_standard:'Standard 4×30',
+        plan_plus:'Plus 8×30',
+        choose_plan_btn:'Choose',
+        btn_start_trial:'Start Trial',
+        reg_title:'Quick Registration (Parents & Students)',
+        reg_student_name:'Student name',
+        reg_age:'Age',
+        reg_language:'Language',
+        reg_parent:'Parent / Guardian',
+        reg_email:'Email',
+        reg_phone:'Phone',
+        reg_save:'Save',
+        reg_pay_wave:'Pay with Wave',
+        reg_pay_orange:'Pay with Orange',
+        gallery_title:'See the fun!',
+        about_title:'Why Future Stars',
+        about_offer_title:'What we offer',
+        about_learn_title:'What your child learns',
+        about_how_title:'How to get started',
+        about_btn_tutors:'Go to Tutors',
+        about_btn_register:'Register now'
+      },
+      FR:{
+        strapline:'Pour enfants 3–18 ans et adultes',
+        hero_title:'Bienvenue à la maison des langues',
+        hero_sub:'Apprends, explore et brille. Anglais • Français • Espagnol • Chinois',
+        btn_register:'Inscription (Parents & Élèves)',
+        btn_find_tutors:'Trouver des tuteurs',
+        pricing_title:'Tarifs (XOF)',
+        plan_trial:'Essai 30 min',
+        plan_standard:'Standard 4×30',
+        plan_plus:'Plus 8×30',
+        choose_plan_btn:'Choisir',
+        btn_start_trial:"Commencer l’essai",
+        reg_title:'Inscription rapide (Parents & Élèves)',
+        reg_student_name:"Nom de l’élève",
+        reg_age:'Âge',
+        reg_language:'Langue',
+        reg_parent:'Parent / Tuteur',
+        reg_email:'E-mail',
+        reg_phone:'Téléphone',
+        reg_save:'Enregistrer',
+        reg_pay_wave:'Payer avec Wave',
+        reg_pay_orange:'Payer avec Orange',
+        gallery_title:'Regardez comme c’est fun !',
+        about_title:'Pourquoi Future Stars',
+        about_offer_title:'Ce que nous proposons',
+        about_learn_title:'Ce que votre enfant apprend',
+        about_how_title:'Comment commencer',
+        about_btn_tutors:'Voir les tuteurs',
+        about_btn_register:'S’inscrire maintenant'
+      }
+    };
+    const tr=(lang,key)=> (T[lang]&&T[lang][key])||T.EN[key]||key;
+
+    function App(){
+      const [tab,setTab]=useState('Home');
+      const [siteLang,setSiteLang]=useState(()=>localStorage.getItem('fs_lang')||'EN');
+      useEffect(()=>localStorage.setItem('fs_lang',siteLang),[siteLang]);
+      // QR modal
+      const [showQR,setShowQR]=useState(false);
+      const [qrAmount,setQrAmount]=useState(20000);
+      const [qrProvider,setQrProvider]=useState('wave'); // 'wave' | 'orange'
+      // Optional custom Orange QR uploaded in Admin
+      const [orangeQrUrl,setOrangeQrUrl]=useState(()=>localStorage.getItem('fs_orange_qr')||'');
+      useEffect(()=>localStorage.setItem('fs_orange_qr',orangeQrUrl),[orangeQrUrl]);
+
+      return (
+        <div className="mx-auto min-h-dvh w-full max-w-7xl bg-gray-50">
+          {/* Header */}
+          <header className="sticky top-0 z-40 border-b bg-white p-3 shadow-soft">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-600 text-white">★</div>
+                <div>
+                  <div className="text-lg font-extrabold leading-tight text-gray-800">Future Stars</div>
+                  <div className="text-xs text-gray-500">{tr(siteLang,'strapline')}</div>
+                </div>
+              </div>
+              <nav className="flex flex-wrap items-center gap-1">
+                {['Home','Tutors','Register','Apply','Admin','Legal'].map(k=> (
+                  <button key={k} onClick={()=>setTab(k)} className={\`rounded-xl px-3 py-1.5 text-sm font-medium \${tab===k?"bg-gray-900 text-white":"hover:bg-gray-100"}\`}>{k}</button>
+                ))}
+                <button onClick={()=>setSiteLang('EN')} className={\`rounded-xl px-2 py-1 text-xs \${siteLang==='EN'?'bg-gray-900 text-white':'border'}\`}>EN</button>
+                <button onClick={()=>setSiteLang('FR')} className={\`rounded-xl px-2 py-1 text-xs \${siteLang==='FR'?'bg-gray-900 text-white':'border'}\`}>FR</button>
+              </nav>
+            </div>
+          </header>
+
+          {/* HOME */}
+          {tab==='Home' && (
+            <main className="space-y-8">
+              {/* HERO */}
+              <section className="bg-gradient-to-br from-rose-300 via-pink-200 to-rose-100 text-gray-900">
+                <div className="grid grid-cols-1 gap-6 p-8 md:grid-cols-2 md:p-14">
+                  <div>
+                    <h1 className="text-3xl md:text-5xl font-extrabold leading-tight">{tr(siteLang,'hero_title')}</h1>
+                    <p className="mt-3 text-lg">{tr(siteLang,'hero_sub')}</p>
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <button onClick={()=>setTab('Register')} className="rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-semibold text-gray-900 shadow-soft">{tr(siteLang,'btn_register')}</button>
+                      <button onClick={()=>setTab('Tutors')} className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-soft">{tr(siteLang,'btn_find_tutors')}</button>
+                    </div>
+                  </div>
+                  <div className="grid gap-3">
+                    <!-- Woman with orange folder -->
+                    <img alt="Student learning with a teacher (orange folder)" src="https://images.unsplash.com/photo-1588072432836-e10032774350?q=80&w=1400&auto=format&fit=crop" className="w-full h-40 md:h-48 rounded-2xl object-cover"/>
+                    <!-- Student typing (moved next to orange folder image) -->
+                    <img alt="Focused student typing on laptop" src="https://images.unsplash.com/photo-1555421689-491a97ff2040?q=80&w=1400&auto=format&fit=crop" className="w-full h-40 md:h-48 rounded-2xl object-cover"/>
+                  </div>
+                </div>
+              </section>
+
+              {/* ABOUT */}
+              <section className="p-6 bg-white">
+                <h2 className="text-2xl font-bold text-center">{tr(siteLang,'about_title')}</h2>
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border p-5 shadow-soft">
+                    <h3 className="font-semibold">{tr(siteLang,'about_offer_title')}</h3>
+                    <ul className="mt-2 text-sm text-gray-600 list-disc pl-5">
+                      <li>1:1 and small‑group lessons</li>
+                      <li>English • French • Spanish • Chinese</li>
+                      <li>Kid‑safe, engaging classes (ages 3–18) + adults</li>
+                    </ul>
+                  </div>
+                  <div className="rounded-2xl border p-5 shadow-soft">
+                    <h3 className="font-semibold">{tr(siteLang,'about_learn_title')}</h3>
+                    <ul className="mt-2 text-sm text-gray-600 list-disc pl-5">
+                      <li>Phonics, reading, speaking & grammar</li>
+                      <li>Conversation, projects & fun activities</li>
+                      <li>Exam prep & pronunciation practice</li>
+                    </ul>
+                  </div>
+                  <div className="rounded-2xl border p-5 shadow-soft">
+                    <h3 className="font-semibold">{tr(siteLang,'about_how_title')}</h3>
+                    <ol className="mt-2 text-sm text-gray-600 list-decimal pl-5">
+                      <li>Open <button onClick={()=>setTab('Tutors')} className="underline">Tutors</button> to choose your teacher.</li>
+                      <li>Open Register to fill the trial form.</li>
+                      <li>Pick a plan in Pricing (Trial is recommended).</li>
+                      <li>Pay securely with Wave or Orange Money.</li>
+                    </ol>
+                    <div className="mt-3 flex gap-2">
+                      <button onClick={()=>setTab('Tutors')} className="rounded-xl border px-3 py-1 text-sm">{tr(siteLang,'about_btn_tutors')}</button>
+                      <button onClick={()=>setTab('Register')} className="rounded-xl bg-gray-900 px-3 py-1 text-sm text-white">{tr(siteLang,'about_btn_register')}</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* PRICING */}
+              <section className="p-6 bg-white">
+                <h2 className="text-2xl font-bold text-center">{tr(siteLang,'pricing_title')}</h2>
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  {[{k:'plan_trial',a:3000},{k:'plan_standard',a:20000},{k:'plan_plus',a:35000}].map(p=> (
+                    <div key={p.a} className={\`rounded-2xl border p-5 shadow-soft \${p.k==='plan_trial'?'ring-2 ring-amber-300':''}\`}>
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold">{tr(siteLang,p.k)}</div>
+                        {p.k==='plan_trial' && (<span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">New Families</span>)}
+                      </div>
+                      <div className="text-3xl font-extrabold mt-1">{p.a.toLocaleString()} XOF</div>
+                      {p.k==='plan_trial' && (
+                        <ul className="mt-2 text-sm text-gray-600 list-disc pl-5">
+                          <li>30‑min 1:1 introduction</li>
+                          <li>Includes Zoom link & mini report</li>
+                          <li>No commitment</li>
+                        </ul>
+                      )}
+                      <button onClick={()=>{ setQrAmount(p.a); setTab('Register'); }} className="mt-3 w-full rounded-xl bg-gray-900 px-4 py-2 text-white">{p.k==='plan_trial' ? tr(siteLang,'btn_start_trial') : tr(siteLang,'choose_plan_btn')}</button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* GALLERY (2 images only) */}
+              <section className="p-8 bg-white">
+                <h3 className="text-xl font-bold text-center mb-4">{tr(siteLang,'gallery_title')}</h3>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
+                  <img alt="Kids learning in class" src="https://images.unsplash.com/photo-1595795002271-d7b52a9e1f9f?q=80&w=1600&auto=format&fit=crop" className="h-36 w-full rounded-2xl object-cover"/>
+                  <img alt="Students solving math on a whiteboard" src="https://images.unsplash.com/photo-1523247610903-0f230e6a5b9b?q=80&w=1600&auto=format&fit=crop" onError={(e)=>{e.currentTarget.src='https://source.unsplash.com/1600x900/?math,classroom,whiteboard';}} className="h-36 w-full rounded-2xl object-cover"/>
+                </div>
+              </section>
+            </main>
+          )}
+
+          {/* Tutors */}
+          {tab==='Tutors' && (
+            <div className="space-y-4 p-4">
+              <h2 className="text-xl font-bold">Tutors</h2>
+              <TeacherOnboarding />
+              <TutorsList onBook={(amt)=>{ setQrProvider('wave'); setQrAmount(amt); setShowQR(true); }} />
+            </div>
+          )}
+
+          {/* Register */}
+          {tab==='Register' && (
+            <div className="space-y-6 p-4">
+              <h2 className="text-xl font-bold">{tr(siteLang,'reg_title')}</h2>
+              <RegisterCard lang={siteLang} onPay={(prov,amt)=>{ setQrProvider(prov); setQrAmount(amt); setShowQR(true); }} defaultAmount={qrAmount} />
+            </div>
+          )}
+
+          {/* Apply (Teachers) */}
+          {tab==='Apply' && (<ApplyTeacherFull />)}
+
+          {/* Admin */}
+          {tab==='Admin' && (
+            <div className="space-y-6 p-4">
+              <h2 className="text-xl font-bold">Admin</h2>
+              <ApplicationsAdmin />
+              <section className="rounded-2xl border bg-white p-4 shadow-soft">
+                <h3 className="font-semibold">Payment QR Settings</h3>
+                <p className="text-sm text-gray-600">Upload your official Orange Money QR (or paste a URL). This image will show for Orange payments.</p>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  <label className="text-sm">Upload Orange Money QR
+                    <input type="file" accept="image/*" className="mt-1 block w-full text-sm" onChange={async(e)=>{const f=e.target.files?.[0];if(!f)return;const fr=new FileReader();fr.onload=()=>setOrangeQrUrl(String(fr.result));fr.readAsDataURL(f);}}/>
+                  </label>
+                  <label className="text-sm">Or paste image URL
+                    <input className="mt-1 w/full rounded-xl border px-3 py-2" placeholder="https://…/orange-qr.png" defaultValue={orangeQrUrl.startsWith('http')?orangeQrUrl:''} onBlur={(e)=>{if(e.target.value.trim()) setOrangeQrUrl(e.target.value.trim());}}/>
+                  </label>
+                </div>
+                {orangeQrUrl && (<div className="mt-3"><div className="text-xs text-gray-500 mb-1">Preview</div><img src={orangeQrUrl} alt="Orange Money QR" className="h-48 w-full rounded-lg object-contain bg-gray-50"/><div className="mt-2"><button onClick={()=>setOrangeQrUrl('')} className="rounded-xl border px-3 py-1 text-sm">Remove</button></div></div>)}
+              </section>
+              <CommissionSettings />
+              <PaymentsAdmin onWave={(amt)=>{ setQrProvider('wave'); setQrAmount(amt); setShowQR(true); }} onOrange={(amt)=>{ setQrProvider('orange'); setQrAmount(amt); setShowQR(true); }} />
+              <PaymentsLog />
+            </div>
+          )}
+
+          {/* Legal */}
+          {tab==='Legal' && (
+            <div className="space-y-6 p-6">
+              <h2 className="text-2xl font-bold">Legal & Safety</h2>
+              <section className="rounded-2xl border bg-white p-4"><h3 className="font-semibold">Terms</h3><p className="text-sm text-gray-700">Refunds, rescheduling window, behavior policy, payments via platform.</p></section>
+              <section className="rounded-2xl border bg-white p-4"><h3 className="font-semibold">Privacy</h3><p className="text-sm text-gray-700">We collect only what’s needed for booking/hiring and store it securely.</p></section>
+              <section className="rounded-2xl border bg-white p-4"><h3 className="font-semibold">Child Safety</h3><p className="text-sm text-gray-700">No sharing personal contacts; kid‑friendly, respectful classes only.</p></section>
+            </div>
+          )}
+
+          {/* Footer */}
+          <footer className="mt-10 border-t bg-white p-6 text-sm text-gray-600">
+            <div className="flex flex-col md:flex-row justify-between gap-3">
+              <div><div className="font-semibold">Instagram</div><a className="underline" href="https://instagram.com/Futurestars_edu" target="_blank" rel="noreferrer">@Futurestars_edu</a></div>
+              <div className="text-gray-500">© Future Stars</div>
+            </div>
+          </footer>
+
+          <PayModal open={showQR} onClose={()=>setShowQR(false)} amount={qrAmount} provider={qrProvider} />
+        </div>
+      );
+    }
+
+    /* ===== Components ===== */
+    function RegisterCard({ onPay, defaultAmount, lang='EN' }){
+      const [kidName,setKidName]=useState("");
+      const [kidAge,setKidAge]=useState("");
+      const [language,setLanguage]=useState("English");
+      const [parentName,setParentName]=useState("");
+      const [email,setEmail]=useState("");
+      const [phone,setPhone]=useState("");
+      const [plan,setPlan]=useState(defaultAmount || 20000);
+
+      const save=()=>{
+        if(!kidName.trim()||!parentName.trim()||!email.trim()){ alert('Fill student name, parent name, and email.'); return; }
+        const rec={kidName,kidAge: String(kidAge),lang: language,parentName,email,phone,plan,ts:Date.now()};
+        const prev=getLS('fs_enrollments',[]); prev.unshift(rec); localStorage.setItem('fs_enrollments',JSON.stringify(prev));
+        alert('Saved! You can pay now to confirm.');
+      };
+
+      return (
+        <section className="rounded-2xl border bg-white p-4 shadow-soft">
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="text-sm">{tr(lang,'reg_student_name')}<input className="mt-1 w-full rounded-xl border px-3 py-2" value={kidName} onChange={e=>setKidName(e.target.value)} /></label>
+            <label className="text-sm">{tr(lang,'reg_age')}<input type="number" min="3" max="18" className="mt-1 w-full rounded-xl border px-3 py-2" value={kidAge} onChange={e=>setKidAge(e.target.value)} /></label>
+            <label className="text-sm">{tr(lang,'reg_language')}<select className="mt-1 w-full rounded-xl border px-3 py-2" value={language} onChange={e=>setLanguage(e.target.value)}><option>English</option><option>French</option><option>Spanish</option><option>Chinese</option></select></label>
+            <label className="text-sm md:col-span-2">{tr(lang,'reg_parent')}<input className="mt-1 w-full rounded-xl border px-3 py-2" value={parentName} onChange={e=>setParentName(e.target.value)} /></label>
+            <label className="text-sm">{tr(lang,'reg_email')}<input type="email" className="mt-1 w-full rounded-xl border px-3 py-2" value={email} onChange={e=>setEmail(e.target.value)} /></label>
+            <label className="text-sm">{tr(lang,'reg_phone')}<input className="mt-1 w-full rounded-xl border px-3 py-2" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Wave/Orange number" /></label>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-3">
+            <label className={\`text-sm flex items-center gap-2 rounded-xl border p-2 \${plan===3000?'ring-2 ring-pink-300':''}\`}><input type="radio" name="plan" checked={plan===3000} onChange={()=>setPlan(3000)} /> {T[lang].plan_trial} — 3,000 XOF</label>
+            <label className={\`text-sm flex items-center gap-2 rounded-xl border p-2 \${plan===20000?'ring-2 ring-pink-300':''}\`}><input type="radio" name="plan" checked={plan===20000} onChange={()=>setPlan(20000)} /> {T[lang].plan_standard} — 20,000 XOF</label>
+            <label className={\`text-sm flex items-center gap-2 rounded-xl border p-2 \${plan===35000?'ring-2 ring-pink-300':''}\`}><input type="radio" name="plan" checked={plan===35000} onChange={()=>setPlan(35000)} /> {T[lang].plan_plus} — 35,000 XOF</label>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={save} className="rounded-xl bg-gray-900 px-4 py-2 text-white">{tr(lang,'reg_save')}</button>
+            <button onClick={()=>onPay('wave',plan)} className="rounded-xl bg-blue-600 px-4 py-2 text-white">{tr(lang,'reg_pay_wave')}</button>
+            <button onClick={()=>onPay('orange',plan)} className="rounded-xl bg-orange-600 px-4 py-2 text-white">{tr(lang,'reg_pay_orange')}</button>
+          </div>
+        </section>
+      );
+    }
+
+    function TeacherOnboarding(){
+      const [email,setEmail]=React.useState("");
+      const [linkMsg,setLinkMsg]=React.useState("");
+      const [docs,setDocs]=React.useState(()=>getLS('fs_teacher_docs',[]));
+      const [name,setName]=React.useState("");
+      const [langs,setLangs]=React.useState([]);
+      const [bio,setBio]=React.useState("");
+      const [rate,setRate]=React.useState("");
+      const [photo,setPhoto]=React.useState(null);
+      const toggle=(l)=> setLangs(x=> x.includes(l)? x.filter(v=>v!==l):[...x,l]);
+      const loadApp=()=>{
+        const apps=getLS('fs_apps',[]);
+        const a=apps.find(x=> (x.email||'').toLowerCase()===email.trim().toLowerCase());
+        if(!a){ setLinkMsg('No application found for that email.'); return; }
+        setName(a.name||''); setLangs(a.langs||[]); if(a.photoDataUrl) setPhoto(a.photoDataUrl); setLinkMsg('Application linked. Pre-filled fields loaded.');
+      };
+      const onDocs=(e)=>{ const files=[...e.target.files]; if(files.length>10) alert('Max 10 files per upload'); const arr=files.slice(0,10).map(f=>({name:f.name,size:f.size,ts:Date.now()})); const next=[...arr,...docs]; setDocs(next); localStorage.setItem('fs_teacher_docs',JSON.stringify(next)); };
+      const onPhoto=(e)=>{ const f=e.target.files?.[0]; if(!f) return; readAsDataURL(f).then(setPhoto); };
+      const publish=()=>{
+        if(!name.trim()||langs.length===0){ alert('Name & at least one language required'); return; }
+        const tutors=getLS('fs_tutors',[]);
+        tutors.unshift({name,langs,photo});
+        localStorage.setItem('fs_tutors',JSON.stringify(tutors));
+        localStorage.setItem('fs_tutor_profile', JSON.stringify({name,langs,bio,rate,photo,email,docs}));
+        alert('Tutor page published! It now appears in the list.');
+      };
+      return (
+        <section className="rounded-2xl border bg-white p-4 shadow-soft">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Teacher Onboarding — Upload & Publish</h3>
+            <span className="text-xs rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">for accepted teachers</span>
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="text-sm">
+              <div className="font-medium mb-1">1) Link your application (optional)</div>
+              <div className="flex gap-2">
+                <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Your application email" className="w-full rounded-xl border px-3 py-2"/>
+                <button onClick={loadApp} className="rounded-xl border px-3 py-2">Load</button>
+              </div>
+              {linkMsg && <div className="mt-1 text-xs text-gray-600">{linkMsg}</div>}
+              <div className="mt-3 font-medium">2) Upload documents</div>
+              <input type="file" multiple accept="image/*,application/pdf" className="mt-1 block w-full text-sm" onChange={onDocs}/>
+              {docs.length>0 && <div className="mt-2 text-xs text-gray-600">Uploaded: {docs.map(d=>d.name).join(', ')}</div>}
+            </div>
+            <div className="text-sm">
+              <div className="font-medium mb-1">3) Build your tutor page</div>
+              <label className="block mb-2">Full name<input className="mt-1 w-full rounded-xl border px-3 py-2" value={name} onChange={e=>setName(e.target.value)}/></label>
+              <div className="mb-2">Languages <div className="mt-1 flex flex-wrap gap-2">{['English','French','Spanish','Chinese','Other'].map(l=>(<label key={l} className="flex items-center gap-2 rounded-xl border px-3 py-1"><input type="checkbox" checked={langs.includes(l)} onChange={()=>toggle(l)}/> {l}</label>))}</div></div>
+              <label className="block mb-2">Bio<textarea className="mt-1 w-full rounded-xl border p-2" rows={3} value={bio} onChange={e=>setBio(e.target.value)} placeholder="Short intro, experience, what you teach"/></label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-sm">Rate (XOF/hour)<input type="number" className="mt-1 w-full rounded-xl border px-3 py-2" value={rate} onChange={e=>setRate(e.target.value)}/></label>
+                <label className="text-sm">Intro video link<input className="mt-1 w-full rounded-xl border px-3 py-2" placeholder="YouTube/Drive link"/></label>
+              </div>
+              <label className="block mt-2">Profile photo<input type="file" accept="image/*" className="mt-1 block w-full text-sm" onChange={onPhoto}/></label>
+              {photo && <img src={photo} alt="Preview" className="mt-2 h-20 w-20 rounded-xl object-cover"/>}
+              <div className="mt-3"><button onClick={publish} className="rounded-xl bg-gray-900 px-4 py-2 text-white">Publish profile</button></div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    function TutorsList({onBook}){
+      const [tutors]=React.useState(()=>getLS('fs_tutors',[]));
+      return (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {tutors.map((t,i)=>(
+            <div key={i} className="rounded-2xl border bg-white p-4 shadow-soft">
+              <div className="flex items-center gap-3">
+                {t.photo?(<img src={t.photo} alt={t.name} className="h-12 w-12 rounded-xl object-cover"/>):(<div className="h-12 w-12 rounded-xl bg-gray-200 grid place-items-center">{t.name?.[0]||'T'}</div>)}
+                <div><div className="font-semibold">{t.name}</div><div className="text-xs text-gray-600">{t.langs?.join(' • ')}</div></div>
+              </div>
+              <div className="mt-3 flex gap-2"><button className="rounded-xl border px-3 py-1 text-sm" onClick={()=>window.alert('Profile coming soon')}>View Profile</button><button className="rounded-xl bg-gray-900 px-3 py-1 text-sm text-white" onClick={()=>onBook(3000)}>Book & Pay</button></div>
+            </div>
+          ))}
+          {tutors.length===0&&<div className="rounded-2xl border bg-white p-4 text-sm text-gray-500">No tutors yet. Approve applicants in Admin.</div>}
+        </div>
+      );
+    }
+
+    function ApplicationsAdmin(){
+      const [apps,setApps]=React.useState(()=>getLS('fs_apps',[]));
+      const [tutors,setTutors]=React.useState(()=>getLS('fs_tutors',[]));
+      React.useEffect(()=>localStorage.setItem('fs_apps',JSON.stringify(apps)),[apps]);
+      React.useEffect(()=>localStorage.setItem('fs_tutors',JSON.stringify(tutors)),[tutors]);
+      const approve=(i)=>{const a=apps[i];const updated=[...apps];updated.splice(i,1);setApps(updated);setTutors([{name:a.name,email:a.email,langs:a.langs,photo:a.photoDataUrl||null},...tutors]);};
+      const reject=(i)=>{const updated=[...apps];updated.splice(i,1);setApps(updated);};
+      return (
+        <section className="rounded-2xl border bg-white p-4 shadow-soft">
+          <h3 className="font-semibold">Teacher applications</h3>
+          <div className="mt-3 space-y-3">
+            {apps.map((a,i)=>(
+              <div key={i} className="rounded-2xl border bg-white p-3 shadow-soft text-sm">
+                <div className="font-semibold">{a.name} <span className="text-xs text-gray-500">({a.email})</span></div>
+                <div className="mt-1 text-xs text-gray-600">Languages: {a.langs?.join(' • ')||'-'}</div>
+                {a.docs?.length>0 && <div className="mt-1 text-xs">Docs: {a.docs.join(', ')}</div>}
+                {a.demo && <div className="mt-1 text-xs">Demo: <a className="underline" href={a.demo} target="_blank">link</a></div>}
+                {a.demoFiles?.length>0 && <div className="mt-1 text-xs">Demo files: {a.demoFiles.map(f=>f.name).join(', ')}</div>}
+                {a.epf && <div className="mt-1 text-xs">EPF links: <pre className="whitespace-pre-wrap">{a.epf}</pre></div>}
+                {a.epfFiles?.length>0 && <div className="mt-1 text-xs">EPF files: {a.epfFiles.map(f=>f.name).join(', ')}</div>}
+                <div className="mt-2 flex gap-2"><button onClick={()=>approve(i)} className="rounded-xl bg-green-600 px-3 py-1 text-white">Approve</button><button onClick={()=>reject(i)} className="rounded-xl border px-3 py-1">Reject</button></div>
+              </div>
+            ))}
+            {apps.length===0&&<div className="text-sm text-gray-500">No applications yet.</div>}
+          </div>
+        </section>
+      );
+    }
+
+    function CommissionSettings(){
+      const [pct,setPct]=React.useState(()=>{
+        const v=localStorage.getItem('fs_commission_standard');
+        const n=v?Number(v):25; return isNaN(n)?25:Math.min(30,Math.max(20,n));
+      });
+      React.useEffect(()=>{ localStorage.setItem('fs_commission_standard', String(pct)); },[pct]);
+      const price=20000;
+      const commAmt=Math.round(price*pct/100);
+      const payout=price-commAmt;
+      return (
+        <section className="rounded-2xl border bg-white p-4 shadow-soft">
+          <h3 className="font-semibold">Commission (Standard plan 20,000 XOF)</h3>
+          <p className="text-sm text-gray-600">Set your platform commission for the monthly Standard plan. Range: 20–30%.</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3 items-center">
+            <div className="text-sm">
+              <label className="block mb-1">Commission %: <b>{pct}%</b></label>
+              <input type="range" min="20" max="30" step="1" value={pct} onChange={e=>setPct(Number(e.target.value))} className="w-full"/>
+              <div className="mt-2 flex gap-2">
+                {[20,25,30].map(v=> (<button key={v} onClick={()=>setPct(v)} className={\`rounded-xl border px-2 py-1 text-xs \${pct===v?'bg-gray-900 text-white':''}\`}>{v}%</button>))}
+              </div>
+            </div>
+            <div className="rounded-xl border p-3 text-sm bg-gray-50">
+              <div>Plan price: <b>{price.toLocaleString()} XOF</b></div>
+              <div>Your commission: <b>{commAmt.toLocaleString()} XOF</b> ({pct}%)</div>
+              <div>Tutor payout: <b>{payout.toLocaleString()} XOF</b></div>
+            </div>
+            <div className="text-xs text-gray-500">This setting is used for Admin test payments and payout calculations in the log.</div>
+          </div>
+        </section>
+      );
+    }
+
+    function PaymentsAdmin({ onWave, onOrange }){
+      return (
+        <section className="rounded-2xl border bg-white p-4 shadow-soft">
+          <h3 className="font-semibold">Payments (Wave & Orange Money)</h3>
+          <p className="text-sm text-gray-600">Use the test buttons to show QR. Production requires backend checkout + webhooks.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <a href="#" onClick={(e)=>{e.preventDefault(); onWave(5000);}} className="rounded-xl bg-blue-600 px-4 py-2 text-sm text-white">Pay with Wave</a>
+            <a href="#" onClick={(e)=>{e.preventDefault(); onOrange(5000);}} className="rounded-xl bg-orange-600 px-4 py-2 text-sm text-white">Pay with Orange Money</a>
+            <button
+              onClick={()=>{
+                const pct = Number(localStorage.getItem('fs_commission_standard')||'25');
+                const amount = 20000;
+                const comm = Math.round(amount*pct/100);
+                const payout = amount - comm;
+                const rows = getLS('fs_payments',[]);
+                rows.unshift({provider:'wave', amount, currency:'XOF', ts:Date.now(), simulated:true, commission_pct:pct, commission_amount:comm, tutor_payout:payout});
+                localStorage.setItem('fs_payments', JSON.stringify(rows));
+                alert(\`Recorded: 20,000 XOF (commission \${pct}%, payout \${payout.toLocaleString()} XOF)\`);
+              }}
+              className="rounded-xl border px-4 py-2 text-sm"
+            >
+              Record test 20,000 XOF
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    function PaymentsLog(){
+      const [rows]=React.useState(()=>getLS('fs_payments',[]));
+      const pctDefault = Number(localStorage.getItem('fs_commission_standard')||'25');
+      return (
+        <section className="rounded-2xl border bg-white p-4 shadow-soft">
+          <h3 className="font-semibold">Payments log</h3>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full min-w-[860px] text-sm">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="p-2">Time</th>
+                  <th className="p-2">Provider</th>
+                  <th className="p-2">Amount</th>
+                  <th className="p-2">Currency</th>
+                  <th className="p-2">Simulated</th>
+                  <th className="p-2">Commission %</th>
+                  <th className="p-2">Commission</th>
+                  <th className="p-2">Tutor payout</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r,i)=>{ const amountNum=Number(r.amount||0); const pct=(r.commission_pct??pctDefault); const comm=(r.commission_amount??Math.round(amountNum*pct/100)); const payout=(r.tutor_payout??(amountNum-comm)); return (
+                  <tr key={i} className="border-b">
+                    <td className="p-2">{new Date(r.ts).toLocaleString()}</td>
+                    <td className="p-2">{r.provider}</td>
+                    <td className="p-2">{amountNum.toLocaleString()}</td>
+                    <td className="p-2">{r.currency}</td>
+                    <td className="p-2">{r.simulated? 'Yes':'No'}</td>
+                    <td className="p-2">{pct}%</td>
+                    <td className="p-2">{comm.toLocaleString()}</td>
+                    <td className="p-2">{payout.toLocaleString()}</td>
+                  </tr>
+                ); })}
+                {rows.length===0 && <tr><td colSpan="8" className="p-4 text-center text-gray-500">No payments recorded yet.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      );
+    }
+
+    function PayModal({ open, onClose, amount, provider }){
+      if(!open) return null;
+      const scheme = provider==='orange' ? 'orange-money://pay' : 'wave://pay';
+      const link = \`\${scheme}?merchant=futurestars&amount=\${amount}&currency=XOF\`;
+      const orangeUrl = localStorage.getItem('fs_orange_qr') || '';
+      const useCustom = provider==='orange' && !!orangeUrl;
+      const qr = useCustom ? orangeUrl : \`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=\${encodeURIComponent(link)}\`;
+      return (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50">
+          <div className="relative w-[340px] rounded-2xl bg-white p-5 shadow-soft">
+            <button onClick={onClose} className="absolute right-3 top-2 text-2xl leading-none">×</button>
+            <div className="text-center">
+              <div className="text-sm text-gray-600 mb-2">Scan to pay {amount.toLocaleString()} XOF ({provider})</div>
+              <img src={qr} alt="Payment QR" className="mx-auto rounded-lg object-contain max-h-60 w-full"/>
+              <a href={link} className="mt-3 inline-block underline text-sm">Open payment app</a>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Compact Teacher Apply form (kept but slim)
+    function ApplyTeacherFull(){
+      const [name,setName]=useState("");
+      const [email,setEmail]=useState("");
+      const [country,setCountry]=useState("");
+      const [tz,setTz]=useState("");
+      const [langs,setLangs]=useState([]);
+      const [demo,setDemo]=useState("");
+      const [agree,setAgree]=useState(false);
+      const [sign,setSign]=useState("");
+      const [docs,setDocs]=useState([]);
+      const toggle=(l)=> setLangs((x)=> x.includes(l)? x.filter(v=>v!==l) : [...x,l]);
+      const onDocs=(e)=>{ const files=[...e.target.files]; if(files.length>5) alert('Max 5 files'); const arr=files.slice(0,5).map(f=>f.name); setDocs(arr); };
+      const submit=()=>{
+        if(!name||!email){ alert('Name & email required'); return; }
+        if(!agree||!sign){ alert('Please agree & sign'); return; }
+        const rec={name,email,country,tz,langs,docs,demo,ts:Date.now()};
+        const prev=getLS('fs_apps',[]); prev.unshift(rec); localStorage.setItem('fs_apps',JSON.stringify(prev));
+        alert('Application submitted! Admin will review.');
+      };
+      return (
+        <div className="space-y-6 p-4">
+          <h2 className="text-xl font-bold">Apply to Teach</h2>
+          <section className="rounded-2xl border bg-white p-4 shadow-soft">
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="text-sm">Full name<input className="mt-1 w-full rounded-xl border px-3 py-2" value={name} onChange={e=>setName(e.target.value)} /></label>
+              <label className="text-sm">Email<input type="email" className="mt-1 w-full rounded-xl border px-3 py-2" value={email} onChange={e=>setEmail(e.target.value)} /></label>
+              <label className="text-sm">Country<input className="mt-1 w-full rounded-xl border px-3 py-2" value={country} onChange={e=>setCountry(e.target.value)} /></label>
+              <label className="text-sm">Timezone<input className="mt-1 w-full rounded-xl border px-3 py-2" placeholder="Africa/Dakar" value={tz} onChange={e=>setTz(e.target.value)} /></label>
+              <label className="text-sm md:col-span-2">Languages you can teach<div className="mt-1 flex flex-wrap gap-2 text-sm">{['English','French','Spanish','Chinese','Other'].map(l=>(<label key={l} className="flex items-center gap-2 rounded-xl border px-3 py-1"><input type="checkbox" checked={langs.includes(l)} onChange={()=>toggle(l)} /> {l}</label>))}</div></label>
+              <label className="text-sm md:col-span-2">Demo video link<input className="mt-1 w-full rounded-xl border px-3 py-2" placeholder="YouTube/Drive" value={demo} onChange={e=>setDemo(e.target.value)} /></label>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="text-sm">Upload documents (max 5)<input type="file" multiple className="mt-1 block w-full text-sm" onChange={onDocs} /></label>
+              <div className="text-xs text-gray-600">{docs.length?(\`Docs: \${docs.join(', ')}\`):'No files selected'}</div>
+            </div>
+            <label className="text-sm flex items-center gap-2"><input type="checkbox" checked={agree} onChange={e=>setAgree(e.target.checked)} /> I agree to contract terms</label>
+            <input className="w-full rounded-xl border px-3 py-2" placeholder="Type full name as signature" value={sign} onChange={e=>setSign(e.target.value)} />
+            <div className="mt-3 flex gap-2">
+              <button onClick={submit} className="rounded-xl bg-gray-900 px-4 py-2 text-white">Submit</button>
+              <button onClick={()=> alert('Saved locally!')} className="rounded-xl border px-4 py-2">Save draft</button>
+            </div>
+          </section>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
